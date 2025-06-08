@@ -8,7 +8,10 @@
     "build": "vite build",
     "electron:dev": "electron .",
     "electron:build": "electron-builder",
-    "preview": "vite preview"
+    "dev:electron": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron:dev\"",
+    "preview": "husky install",
+    "release": "standard-version",
+    "postrelease": "git push --follow-tags origin main"
   },
   "author": "",
   "license": "MIT",
@@ -18,10 +21,16 @@
     "python-shell": "^5.0.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.0.0",
+    "@commitlint/config-conventional": "^17.0.0",
     "@vitejs/plugin-vue": "^4.5.0",
     "vite": "^5.0.0",
+    "concurrently": "^9.1.2",
     "electron-builder": "^24.9.1",
-    "electron": "^28.1.0"
+    "electron": "^28.1.0",
+    "husky": "^8.0.0",
+    "standard-version": "^9.5.0",
+    "wait-on": "^8.0.3"
   },
   "build": {
     "appId": "com.ncm2mp3.assistant",
@@ -46,7 +55,8 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     }
   }
 }
