@@ -1,2 +1,1 @@
 ncmdump>=0.1.0
-pyinstaller>=6.3.0

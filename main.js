@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const isDev = process.env.NODE_ENV === 'development';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -17,12 +16,10 @@ function createWindow() {
   win.setMenu(null);
 
   // In development, load from Vite dev server
-  if (isDev) {
+  if (process.env.NODE_ENV === 'development') {
     win.loadURL('http://localhost:5173');
-    // Open DevTools in development mode
-    win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+    win.loadFile('dist/index.html');
   }
 }
 
