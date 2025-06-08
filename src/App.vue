@@ -1,40 +1,85 @@
 <template>
   <div class="container">
     <el-tabs v-model="activeTab">
-      <el-tab-pane label="单个转换" name="single">
+      <el-tab-pane label="拖放转换" name="single">
         <div class="conversion-form">
-          <el-form label-position="top">
-            <el-form-item label="输入文件">
-              <el-input v-model="singleInput" readonly>
-                <template #append>
-                  <el-button @click="selectSingleFile">浏览</el-button>
+          <div 
+            class="drop-area"
+            @dragover.prevent="handleDragOver"
+            @dragleave.prevent="handleDragLeave"
+            @drop.prevent="handleFileDrop"
+            :class="{ 'is-dragover': isDragover }"
+          >
+            <el-icon class="drop-icon"><Upload /></el-icon>
+            <div class="drop-text">
+              将 NCM 文件拖放到此处，或
+              <el-button type="primary" link @click="selectSingleFile">点击选择文件</el-button>
+            </div>
+            <div class="drop-hint">支持单个或多个 NCM 文件</div>
+          </div>
+
+          <div v-if="pendingFiles.length > 0" class="file-list">
+            <div class="list-header">
+              <h4>待转换文件 ({{ pendingFiles.length }})</h4>
+              <el-button type="danger" size="small" @click="clearPendingFiles">清空列表</el-button>
+            </div>
+            <el-table :data="pendingFiles" style="width: 100%" height="300">
+              <el-table-column prop="name" label="文件名" min-width="200">
+                <template #default="scope">
+                  <el-tooltip :content="scope.row.path" placement="top">
+                    <span>{{ scope.row.name }}</span>
+                  </el-tooltip>
                 </template>
-              </el-input>
-            </el-form-item>
-            
-            <el-form-item label="输出位置">
+              </el-table-column>
+              <el-table-column prop="size" label="大小" width="120">
+                <template #default="scope">
+                  {{ formatFileSize(scope.row.size) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="scope">
+                  <el-button 
+                    type="danger" 
+                    link 
+                    @click="removeFile(scope.$index)"
+                  >
+                    移除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="conversion-options">
               <el-checkbox v-model="useCustomOutput">自定义输出位置</el-checkbox>
               <el-input v-model="singleOutput" readonly v-if="useCustomOutput">
                 <template #append>
                   <el-button @click="selectSingleOutput">浏览</el-button>
                 </template>
               </el-input>
-            </el-form-item>
+            </div>
 
-            <el-form-item>
-              <el-button type="primary" @click="convertSingle" :loading="converting">
+            <div class="action-buttons">
+              <el-button 
+                type="primary" 
+                @click="convertFiles" 
+                :loading="converting"
+                :disabled="pendingFiles.length === 0"
+              >
                 开始转换
               </el-button>
-            </el-form-item>
-          </el-form>
+            </div>
+          </div>
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="批量转换" name="batch">
+      <el-tab-pane label="文件夹转换" name="batch">
         <div class="conversion-form">
           <el-form label-position="top">
             <el-form-item label="输入文件夹">
               <el-input v-model="batchInput" readonly>
+                <template #prepend>
+                  <el-icon><Folder /></el-icon>
+                </template>
                 <template #append>
                   <el-button @click="selectBatchInput">浏览</el-button>
                 </template>
@@ -44,6 +89,9 @@
             <el-form-item label="输出文件夹">
               <el-checkbox v-model="useCustomBatchOutput">自定义输出位置</el-checkbox>
               <el-input v-model="batchOutput" readonly v-if="useCustomBatchOutput">
+                <template #prepend>
+                  <el-icon><Folder /></el-icon>
+                </template>
                 <template #append>
                   <el-button @click="selectBatchOutput">浏览</el-button>
                 </template>
@@ -51,7 +99,12 @@
             </el-form-item>
 
             <el-form-item>
-              <el-button type="primary" @click="convertBatch" :loading="converting">
+              <el-button 
+                type="primary" 
+                @click="convertBatch" 
+                :loading="converting"
+                :disabled="!batchInput"
+              >
                 开始转换
               </el-button>
             </el-form-item>
@@ -120,9 +173,14 @@ const { ipcRenderer } = require('electron');
 const { PythonShell } = require('python-shell');
 const fs = require('fs');
 const path = require('path');
+import { Upload, Folder } from '@element-plus/icons-vue'
 
 export default {
   name: 'App',
+  components: {
+    Upload,
+    Folder
+  },
   data() {
     return {
       activeTab: 'single',
@@ -136,7 +194,9 @@ export default {
       progressVisible: false,
       progress: 0,
       progressStatus: '',
-      conversionHistory: []
+      conversionHistory: [],
+      isDragover: false,
+      pendingFiles: []
     }
   },
   computed: {
@@ -145,6 +205,100 @@ export default {
     }
   },
   methods: {
+    formatFileSize(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    },
+    handleDragOver(e) {
+      this.isDragover = true;
+    },
+    handleDragLeave(e) {
+      this.isDragover = false;
+    },
+    handleFileDrop(e) {
+      this.isDragover = false;
+      const files = Array.from(e.dataTransfer.files);
+      const ncmFiles = files.filter(file => file.path.toLowerCase().endsWith('.ncm'));
+      
+      if (ncmFiles.length === 0) {
+        this.$message.error('请选择 NCM 格式的文件');
+        return;
+      }
+
+      const newFiles = ncmFiles.map(file => ({
+        name: file.name,
+        path: file.path,
+        size: file.size
+      }));
+
+      this.pendingFiles = [...this.pendingFiles, ...newFiles];
+    },
+    removeFile(index) {
+      this.pendingFiles.splice(index, 1);
+    },
+    clearPendingFiles() {
+      this.pendingFiles = [];
+    },
+    async selectSingleFile() {
+      const filePath = await ipcRenderer.invoke('select-file');
+      if (filePath) {
+        const stats = fs.statSync(filePath);
+        this.pendingFiles.push({
+          name: path.basename(filePath),
+          path: filePath,
+          size: stats.size
+        });
+      }
+    },
+    async convertFiles() {
+      if (this.pendingFiles.length === 0) {
+        this.$message.error('请选择要转换的文件');
+        return;
+      }
+
+      this.converting = true;
+      this.progressVisible = true;
+      this.progress = 0;
+
+      try {
+        for (let i = 0; i < this.pendingFiles.length; i++) {
+          const file = this.pendingFiles[i];
+          const outputPath = this.useCustomOutput ? 
+            path.join(this.singleOutput, file.name.replace('.ncm', '.mp3')) :
+            file.path.replace('.ncm', '.mp3');
+
+          try {
+            await this.convertFile(file.path, outputPath);
+            this.addToHistory({
+              inputFile: file.path,
+              outputFile: outputPath,
+              status: 'success'
+            });
+          } catch (error) {
+            this.addToHistory({
+              inputFile: file.path,
+              outputFile: outputPath,
+              status: 'error',
+              error: error.message
+            });
+          }
+
+          this.progress = Math.round(((i + 1) / this.pendingFiles.length) * 100);
+        }
+
+        this.progressStatus = 'success';
+        this.$message.success('转换完成');
+        this.pendingFiles = [];
+      } catch (error) {
+        this.progressStatus = 'exception';
+        this.$message.error('转换失败: ' + error.message);
+      } finally {
+        this.converting = false;
+      }
+    },
     formatDate(timestamp) {
       const date = new Date(timestamp);
       return date.toLocaleString();
@@ -160,9 +314,6 @@ export default {
         timestamp: Date.now(),
         ...record
       });
-    },
-    async selectSingleFile() {
-      this.singleInput = await ipcRenderer.invoke('select-file');
     },
     async selectSingleOutput() {
       this.singleOutput = await ipcRenderer.invoke('select-folder');
@@ -198,43 +349,6 @@ export default {
           reject(err);
         });
       });
-    },
-    async convertSingle() {
-      if (!this.singleInput) {
-        this.$message.error('请选择输入文件');
-        return;
-      }
-
-      this.converting = true;
-      this.progressVisible = true;
-      this.progress = 0;
-
-      try {
-        const outputPath = this.useCustomOutput ? 
-          path.join(this.singleOutput, path.basename(this.singleInput, '.ncm') + '.mp3') :
-          this.singleInput.replace('.ncm', '.mp3');
-
-        await this.convertFile(this.singleInput, outputPath);
-        this.progress = 100;
-        this.progressStatus = 'success';
-        this.$message.success('转换完成');
-        this.addToHistory({
-          inputFile: this.singleInput,
-          outputFile: outputPath,
-          status: 'success'
-        });
-      } catch (error) {
-        this.progressStatus = 'exception';
-        this.$message.error('转换失败: ' + error.message);
-        this.addToHistory({
-          inputFile: this.singleInput,
-          outputFile: this.singleInput.replace('.ncm', '.mp3'),
-          status: 'error',
-          error: error.message
-        });
-      } finally {
-        this.converting = false;
-      }
     },
     async convertBatch() {
       if (!this.batchInput) {
@@ -305,6 +419,67 @@ export default {
   margin-top: 20px;
 }
 
+.drop-area {
+  border: 2px dashed #dcdfe6;
+  border-radius: 6px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.drop-area.is-dragover {
+  border-color: #409eff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+.drop-icon {
+  font-size: 48px;
+  color: #909399;
+  margin-bottom: 16px;
+}
+
+.drop-text {
+  font-size: 16px;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.drop-hint {
+  font-size: 12px;
+  color: #909399;
+}
+
+.file-list {
+  margin-top: 20px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.list-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+}
+
+.conversion-options {
+  margin: 20px 0;
+  padding: 16px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.action-buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
@@ -328,5 +503,11 @@ export default {
 .error-message {
   color: #f56c6c;
   font-size: 12px;
+}
+
+.el-input-group__prepend {
+  background-color: #f5f7fa;
+  color: #909399;
+  padding: 0 15px;
 }
 </style> 
