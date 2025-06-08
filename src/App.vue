@@ -50,12 +50,17 @@
             </el-table>
 
             <div class="conversion-options">
-              <el-checkbox v-model="useCustomOutput">自定义输出位置</el-checkbox>
-              <el-input v-model="singleOutput" readonly v-if="useCustomOutput">
-                <template #append>
-                  <el-button @click="selectSingleOutput">浏览</el-button>
-                </template>
-              </el-input>
+              <div class="option-row">
+                <el-checkbox v-model="useCustomOutput">自定义输出位置</el-checkbox>
+                <el-input v-model="singleOutput" readonly v-if="useCustomOutput">
+                  <template #append>
+                    <el-button @click="selectSingleOutput">浏览</el-button>
+                  </template>
+                </el-input>
+              </div>
+              <div class="option-row">
+                <el-checkbox v-model="deleteOriginal">转换完成后删除原文件</el-checkbox>
+              </div>
             </div>
 
             <div class="action-buttons">
@@ -96,6 +101,10 @@
                   <el-button @click="selectBatchOutput">浏览</el-button>
                 </template>
               </el-input>
+            </el-form-item>
+
+            <el-form-item>
+              <el-checkbox v-model="deleteBatchOriginal">转换完成后删除原文件</el-checkbox>
             </el-form-item>
 
             <el-form-item>
@@ -155,6 +164,50 @@
           </el-table>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="关于" name="about">
+        <div class="about-container">
+          <h2>NCM to MP3 Assistant</h2>
+          <div class="version">版本：1.0.0</div>
+          
+          <div class="section">
+            <h3>功能特点</h3>
+            <ul>
+              <li>支持单个或多个 NCM 文件拖放转换</li>
+              <li>支持整个文件夹批量转换</li>
+              <li>可选择是否保留原文件</li>
+              <li>支持自定义输出位置</li>
+              <li>实时显示转换进度</li>
+              <li>保存转换历史记录</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h3>使用说明</h3>
+            <h4>拖放转换</h4>
+            <ol>
+              <li>将 NCM 文件拖入虚线框内，或点击选择文件</li>
+              <li>可以添加多个文件到转换列表</li>
+              <li>选择是否自定义输出位置</li>
+              <li>选择是否删除原文件</li>
+              <li>点击"开始转换"按钮</li>
+            </ol>
+
+            <h4>文件夹转换</h4>
+            <ol>
+              <li>选择包含 NCM 文件的输入文件夹</li>
+              <li>选择是否自定义输出位置</li>
+              <li>选择是否删除原文件</li>
+              <li>点击"开始转换"按钮</li>
+            </ol>
+          </div>
+
+          <div class="section">
+            <h3>项目信息</h3>
+            <p>GitHub 仓库：<a href="https://github.com/ylongwang2782/Ncm2Mp3Assistant" target="_blank">https://github.com/ylongwang2782/Ncm2Mp3Assistant</a></p>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <el-dialog v-model="progressVisible" title="转换进度" width="30%">
@@ -196,7 +249,9 @@ export default {
       progressStatus: '',
       conversionHistory: [],
       isDragover: false,
-      pendingFiles: []
+      pendingFiles: [],
+      deleteOriginal: false,
+      deleteBatchOriginal: false
     }
   },
   computed: {
@@ -272,6 +327,9 @@ export default {
 
           try {
             await this.convertFile(file.path, outputPath);
+            if (this.deleteOriginal) {
+              fs.unlinkSync(file.path);
+            }
             this.addToHistory({
               inputFile: file.path,
               outputFile: outputPath,
@@ -378,6 +436,9 @@ export default {
 
           try {
             await this.convertFile(inputPath, outputPath);
+            if (this.deleteBatchOriginal) {
+              fs.unlinkSync(inputPath);
+            }
             this.addToHistory({
               inputFile: inputPath,
               outputFile: outputPath,
@@ -509,5 +570,59 @@ export default {
   background-color: #f5f7fa;
   color: #909399;
   padding: 0 15px;
+}
+
+.option-row {
+  margin-bottom: 12px;
+}
+
+.about-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.about-container h2 {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.version {
+  text-align: center;
+  color: #909399;
+  margin-bottom: 32px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section h3 {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.section h4 {
+  margin: 16px 0 8px;
+  color: #606266;
+}
+
+.section ul, .section ol {
+  padding-left: 20px;
+  color: #606266;
+}
+
+.section li {
+  margin-bottom: 8px;
+}
+
+.section a {
+  color: #409eff;
+  text-decoration: none;
+}
+
+.section a:hover {
+  text-decoration: underline;
 }
 </style> 
