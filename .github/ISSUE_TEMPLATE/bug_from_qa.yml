@@ -1,5 +1,5 @@
 name: 🧪 QA Bug 提交
-description: 内部测试人员使用此模板提 Bug
+description: 请使用此模板提 Bug
 title: "[Bug] 模块名称 - 简要问题描述"
 labels: [bug, from-QA]
 body:

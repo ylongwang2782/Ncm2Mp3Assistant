@@ -168,7 +168,7 @@
       <el-tab-pane label="关于" name="about">
         <div class="about-container">
           <h2>NCM to MP3 Assistant</h2>
-          <div class="version">版本：1.0.0</div>
+          <div class="version">版本：{{ version }}</div>
           
           <div class="section">
             <h3>功能特点</h3>
@@ -227,6 +227,7 @@ const { PythonShell } = require('python-shell');
 const fs = require('fs');
 const path = require('path');
 import { Upload, Folder } from '@element-plus/icons-vue'
+import packageJson from '../package.json'
 
 export default {
   name: 'App',
@@ -236,6 +237,7 @@ export default {
   },
   data() {
     return {
+      version: packageJson.version,
       activeTab: 'single',
       singleInput: '',
       singleOutput: '',
