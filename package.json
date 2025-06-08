@@ -1,6 +1,6 @@
 {
   "name": "ncm2mp3-assistant",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NCM to MP3 assistant application",
   "main": "main.js",
   "scripts": {
