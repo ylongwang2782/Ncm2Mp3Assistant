@@ -34,10 +34,19 @@
       "dist/**/*",
       "main.js",
       "ncm_converter.py",
-      "requirements.txt"
+      "requirements.txt",
+      "install_dependencies.py"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NCM to MP3 Assistant"
     }
   }
 }
