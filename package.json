@@ -1,0 +1,48 @@
+{
+  "name": "ncm2mp3-converter",
+  "version": "1.0.0",
+  "description": "NCM to MP3 converter application",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
+    "build:python": "python build_python.py",
+    "electron:build": "npm run build:python && electron-builder",
+    "preview": "vite preview"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "vue": "^3.3.4",
+    "element-plus": "^2.4.3",
+    "python-shell": "^5.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "vite": "^5.0.0",
+    "electron-builder": "^24.9.1",
+    "electron": "^28.1.0",
+    "concurrently": "^8.2.2"
+  },
+  "build": {
+    "appId": "com.ncm2mp3.converter",
+    "productName": "NCM to MP3 Converter",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "dist_python/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  }
+}

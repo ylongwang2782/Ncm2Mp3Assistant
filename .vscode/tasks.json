@@ -1,0 +1,32 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+	  {
+		"label": "npm: build",
+		"type": "shell",
+		"command": "npm run build",
+		"group": "build",
+		"problemMatcher": []
+	  },
+	  {
+		"label": "npm: electron:build",
+		"type": "shell",
+		"command": "npm run electron:build",
+		"group": "build",
+		"problemMatcher": []
+	  },
+	  {
+		"label": "build-all",
+		"dependsOn": [
+		  "npm: build",
+		  "npm: electron:build"
+		],
+		"dependsOrder": "sequence",  // 先执行 build，再执行 electron:build
+		"group": {
+		  "kind": "build",
+		  "isDefault": true
+		}
+	  }
+	]
+  }
+  
