@@ -58,6 +58,50 @@
           </el-form>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="转换记录" name="history">
+        <div class="history-container">
+          <div class="history-header">
+            <h3>转换记录</h3>
+            <el-button type="danger" size="small" @click="clearHistory" :disabled="!conversionHistory.length">
+              清空记录
+            </el-button>
+          </div>
+          <el-table :data="conversionHistory" style="width: 100%" height="400">
+            <el-table-column prop="timestamp" label="转换时间" width="180">
+              <template #default="scope">
+                {{ formatDate(scope.row.timestamp) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="inputFile" label="输入文件" min-width="200">
+              <template #default="scope">
+                <el-tooltip :content="scope.row.inputFile" placement="top">
+                  <span>{{ getFileName(scope.row.inputFile) }}</span>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column prop="outputFile" label="输出文件" min-width="200">
+              <template #default="scope">
+                <el-tooltip :content="scope.row.outputFile" placement="top">
+                  <span>{{ getFileName(scope.row.outputFile) }}</span>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'">
+                  {{ scope.row.status === 'success' ? '成功' : '失败' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="error" label="错误信息" min-width="200" v-if="hasErrors">
+              <template #default="scope">
+                <span v-if="scope.row.error" class="error-message">{{ scope.row.error }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <el-dialog v-model="progressVisible" title="转换进度" width="30%">
@@ -91,10 +135,32 @@ export default {
       converting: false,
       progressVisible: false,
       progress: 0,
-      progressStatus: ''
+      progressStatus: '',
+      conversionHistory: []
+    }
+  },
+  computed: {
+    hasErrors() {
+      return this.conversionHistory.some(record => record.error);
     }
   },
   methods: {
+    formatDate(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleString();
+    },
+    getFileName(filePath) {
+      return path.basename(filePath);
+    },
+    clearHistory() {
+      this.conversionHistory = [];
+    },
+    addToHistory(record) {
+      this.conversionHistory.unshift({
+        timestamp: Date.now(),
+        ...record
+      });
+    },
     async selectSingleFile() {
       this.singleInput = await ipcRenderer.invoke('select-file');
     },
@@ -152,9 +218,20 @@ export default {
         this.progress = 100;
         this.progressStatus = 'success';
         this.$message.success('转换完成');
+        this.addToHistory({
+          inputFile: this.singleInput,
+          outputFile: outputPath,
+          status: 'success'
+        });
       } catch (error) {
         this.progressStatus = 'exception';
         this.$message.error('转换失败: ' + error.message);
+        this.addToHistory({
+          inputFile: this.singleInput,
+          outputFile: this.singleInput.replace('.ncm', '.mp3'),
+          status: 'error',
+          error: error.message
+        });
       } finally {
         this.converting = false;
       }
@@ -185,7 +262,22 @@ export default {
           const inputPath = path.join(this.batchInput, file);
           const outputPath = path.join(outputDir, file.replace('.ncm', '.mp3'));
 
-          await this.convertFile(inputPath, outputPath);
+          try {
+            await this.convertFile(inputPath, outputPath);
+            this.addToHistory({
+              inputFile: inputPath,
+              outputFile: outputPath,
+              status: 'success'
+            });
+          } catch (error) {
+            this.addToHistory({
+              inputFile: inputPath,
+              outputFile: outputPath,
+              status: 'error',
+              error: error.message
+            });
+          }
+          
           this.progress = Math.round(((i + 1) / files.length) * 100);
         }
 
@@ -205,7 +297,7 @@ export default {
 <style>
 .container {
   padding: 20px;
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -216,5 +308,25 @@ export default {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+}
+
+.history-container {
+  margin-top: 20px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.history-header h3 {
+  margin: 0;
+}
+
+.error-message {
+  color: #f56c6c;
+  font-size: 12px;
 }
 </style> 
