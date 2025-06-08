@@ -118,6 +118,15 @@ export default {
           path.join(__dirname, '..', 'ncm_converter.py') :
           path.join(process.resourcesPath, 'dist_python', 'ncm_converter.exe');
 
+        console.log('转换器路径:', converterPath);
+        console.log('输入文件:', inputPath);
+        console.log('输出文件:', outputPath);
+
+        if (!fs.existsSync(converterPath)) {
+          reject(new Error(`转换器不存在: ${converterPath}`));
+          return;
+        }
+
         const options = {
           mode: 'text',
           args: [inputPath, outputPath]
@@ -128,32 +137,48 @@ export default {
           options.pythonOptions = ['-u'];
           options.scriptPath = path.dirname(converterPath);
           PythonShell.run(path.basename(converterPath), options).then(messages => {
+            console.log('Python 输出:', messages);
             if (messages[0] === 'success') {
               resolve();
             } else {
               reject(new Error(messages[0].replace('error:', '')));
             }
           }).catch(err => {
+            console.error('Python 错误:', err);
             reject(err);
           });
         } else {
           const { spawn } = require('child_process');
-          const process = spawn(converterPath, [inputPath, outputPath]);
+          console.log('启动转换进程:', converterPath, [inputPath, outputPath]);
+          
+          const process = spawn(converterPath, [inputPath, outputPath], {
+            windowsHide: false
+          });
           
           let output = '';
           process.stdout.on('data', (data) => {
-            output += data.toString();
+            const message = data.toString();
+            console.log('转换器输出:', message);
+            output += message;
           });
 
           process.stderr.on('data', (data) => {
-            output += data.toString();
+            const message = data.toString();
+            console.error('转换器错误:', message);
+            output += message;
+          });
+
+          process.on('error', (err) => {
+            console.error('进程错误:', err);
+            reject(err);
           });
 
           process.on('close', (code) => {
+            console.log('进程退出码:', code);
             if (code === 0) {
               resolve();
             } else {
-              reject(new Error(output || '转换失败'));
+              reject(new Error(output || `转换失败，退出码: ${code}`));
             }
           });
         }

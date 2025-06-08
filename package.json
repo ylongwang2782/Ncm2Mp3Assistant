@@ -1,14 +1,13 @@
 {
-  "name": "ncm2mp3-converter",
+  "name": "ncm2mp3-assistant",
   "version": "1.0.0",
-  "description": "NCM to MP3 converter application",
+  "description": "NCM to MP3 Assistant - A tool to convert NCM files to MP3 format",
   "main": "main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
-    "build:python": "python build_python.py",
-    "electron:build": "npm run build:python && electron-builder",
+    "electron:build": "electron-builder",
     "preview": "vite preview"
   },
   "author": "",
@@ -26,23 +25,19 @@
     "concurrently": "^8.2.2"
   },
   "build": {
-    "appId": "com.ncm2mp3.converter",
-    "productName": "NCM to MP3 Converter",
+    "appId": "com.ncm2mp3.assistant",
+    "productName": "NCM to MP3 Assistant",
     "directories": {
       "output": "dist_electron"
     },
     "files": [
       "dist/**/*",
       "main.js",
-      "dist_python/**/*"
+      "ncm_converter.py",
+      "requirements.txt"
     ],
     "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": ["x64"]
-        }
-      ]
+      "target": "nsis"
     }
   }
 }

@@ -6,11 +6,15 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
+    title: 'NCM to MP3 Assistant',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
   });
+
+  // 移除菜单栏
+  win.setMenu(null);
 
   // In development, load from Vite dev server
   if (isDev) {
